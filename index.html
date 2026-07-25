@@ -437,24 +437,29 @@
     let evap = gameState.solar > 50 ? 8 : 5;
     gameState.water = Math.max(0, gameState.water - evap);
 
-    // 2. 植物光合作用（水光充足時，植物大幅成長）
-    let waterNeeded = Math.ceil(gameState.plant * 0.3);
-    let solarNeeded = Math.ceil(gameState.plant * 0.2);
+// 2. 植物光合作用與成長（修正：提升植物基礎爆發力）
+        let waterNeeded = Math.ceil(gameState.plant * 0.3);
+        let solarNeeded = Math.ceil(gameState.plant * 0.2);
 
-    if (gameState.water >= waterNeeded && gameState.solar >= solarNeeded) {
-        gameState.water -= waterNeeded;
-        gameState.solar -= solarNeeded;
-        
-        // 修正：水光充足時，植物增加 20% + 2 基礎值（確保成長能覆蓋動物進食）
-        let growth = Math.floor(gameState.plant * 0.2) + 2;
-        gameState.plant += growth;
-        addLog(`☀️ 陽光與水資源充足，植物生長 +${growth}`);
-    } else {
-        // 資源不足才枯萎
-        let withered = Math.ceil(gameState.plant * 0.2);
-        gameState.plant = Math.max(0, gameState.plant - withered);
-        addLog(`🍂 缺水或日光，${withered} 單位植物枯萎。`, false, true);
-    }
+        if (gameState.water >= waterNeeded && gameState.solar >= solarNeeded) {
+            gameState.water -= waterNeeded;
+            gameState.solar -= solarNeeded;
+            
+            // 讓植物在初期擁有強大的生長動能 (30% + 5 單位)
+            let growth = Math.floor(gameState.plant * 0.3) + 5;
+            
+            // 若植物過度氾濫 (超過 60)，則受限於環境空間，成長放緩
+            if (gameState.plant > 60) {
+                growth = Math.floor(gameState.plant * 0.1) + 2;
+            }
+            
+            gameState.plant += growth;
+            addLog(`☀️ 陽光與水資源充足，植物繁衍了 +${growth} 單位`);
+        } else {
+            let withered = Math.ceil(gameState.plant * 0.2);
+            gameState.plant = Math.max(0, gameState.plant - withered);
+            addLog(`🍂 缺水或日光，${withered} 單位植物枯萎。`);
+        }
 
     // 3. 微生物 (T) 代謝與蛋白質消耗
     gameState.microorganism *= 0.95;
@@ -476,22 +481,23 @@
         addLog(`⚠️ 微生物強度不足 (${gameState.microorganism.toFixed(1)}T < ${requiredMicro.toFixed(1)}T)，植物與動物衰退！`, false, true);
     }
 
-    // 5. 動物進食與繁殖
-    let foodNeeded = gameState.animal * 1;
-    if (gameState.plant >= foodNeeded) {
-        gameState.plant -= foodNeeded;
-        if (gameState.animal > 0 && gameState.year % 3 === 0 && gameState.plant > gameState.animal * 2) {
-            gameState.animal += 1;
-            addLog("🐇 食物充沛，動物誕生了新幼崽！");
+  // 5. 動物進食與繁殖（修正：提高繁殖門檻，保護植物）
+        let foodNeeded = gameState.animal * 1;
+        if (gameState.plant >= foodNeeded) {
+            gameState.plant -= foodNeeded;
+            
+            // 繁殖條件加嚴：植物總量必須是動物數量的「5倍」以上才會生育
+            if (gameState.animal > 0 && gameState.year % 3 === 0 && gameState.plant > gameState.animal * 5 && gameState.animal < 15) {
+                gameState.animal += 1;
+                addLog("🐇 食物極度充沛，動物誕生了新幼崽！");
+            }
+        } else {
+            let starved = Math.ceil((foodNeeded - gameState.plant) / 2);
+            gameState.microorganism += starved * 0.5;
+            gameState.plant = 0;
+            gameState.animal = Math.max(0, gameState.animal - starved);
+            addLog(`💀 食物不足，${starved} 隻動物死亡（遺體轉化為微生物養分 +${(starved * 0.5).toFixed(1)}T）。`);
         }
-    } else {
-        let starved = Math.ceil((foodNeeded - gameState.plant) / 2);
-        gameState.microorganism += starved * 0.5;
-        gameState.plant = 0;
-        gameState.animal = Math.max(0, gameState.animal - starved);
-        addLog(`💀 食物不足，${starved} 隻動物死亡（轉化為微生物養分 +${(starved * 0.5).toFixed(1)}T）。`);
-    }
-
     // 6. 年度獎勵
     if (gameState.plant > 0 && gameState.animal > 0 && gameState.microorganism > 0) {
         let reward = 10 + Math.floor((gameState.plant + gameState.animal) / 5);
