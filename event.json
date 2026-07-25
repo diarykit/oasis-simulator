@@ -1,0 +1,53 @@
+{
+  "description": "綠洲生態圈隨機事件總表 (概率累加判定)",
+  "events": [
+    {
+      "id": "gold_mine",
+      "name": "發現金礦，獲得大量資金！",
+      "chance": 0.10,
+      "effects": {
+        "credits": 100
+      }
+    },
+    {
+      "id": "energy_boost",
+      "name": "陽光普照，能量增加！",
+      "chance": 0.05,
+      "effects": {
+        "solar": 20
+      }
+    },
+    {
+      "id": "water_surge",
+      "name": "綠洲地下水湧出，水量增加！",
+      "chance": 0.05,
+      "effects": {
+        "water": 20
+      }
+    },
+    {
+      "id": "microbe_bloom",
+      "name": "土壤養分爆發，微生物暴增！",
+      "chance": 0.05,
+      "effects": {
+        "microorganism": 3.0
+      }
+    },
+    {
+      "id": "plant_sprout",
+      "name": "雨後春筍，植物大量生長！",
+      "chance": 0.05,
+      "effects": {
+        "plant": 5
+      }
+    },
+    {
+      "id": "animal_migration",
+      "name": "外來物種遷徙，動物數量增加！",
+      "chance": 0.05,
+      "effects": {
+        "animal": 2
+      }
+    }
+  ]
+}

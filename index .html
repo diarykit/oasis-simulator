@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>綠洲生態圈 Oasis Simulator</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-green: #22c55e;
+            --accent-blue: #38bdf8;
+            --accent-yellow: #facc15;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 950px;
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: var(--accent-green);
+        }
+
+        .year-badge {
+            background-color: #334155;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: #0f172a;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #334155;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: var(--text-sub);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        .stat-value {
+            font-weight: bold;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: #334155;
+            color: var(--text-main);
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #475569;
+        }
+
+        button.primary {
+            background-color: var(--accent-green);
+            color: #000;
+            grid-column: span 2;
+            padding: 12px;
+            font-size: 1rem;
+            margin-top: 15px;
+        }
+
+        button.primary:hover {
+            background-color: #4ade80;
+        }
+
+        .log-box {
+            grid-column: span 2;
+            background-color: #020617;
+            border-radius: 8px;
+            padding: 12px;
+            height: 130px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            border: 1px solid #334155;
+        }
+
+        @media (max-width: 768px) {
+            .log-box {
+                grid-column: span 1;
+            }
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-event {
+            color: var(--accent-yellow);
+        }
+
+        .log-warn {
+            color: var(--accent-red);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🌱 綠洲生態圈 Oasis Simulator</h1>
+        <div class="year-badge">第 <span id="year-count">1</span> 年</div>
+    </header>
+
+    <div class="grid-layout">
+        <!-- 環境與資源 -->
+        <div class="card">
+            <h2>🌍 環境與物資</h2>
+            <div class="stat-row"><span>💧 水資源</span><span class="stat-value" id="water-val">50</span></div>
+            <div class="stat-row"><span>☀️ 太陽能</span><span class="stat-value" id="solar-val">50</span></div>
+            <div class="stat-row"><span>🥩 蛋白質</span><span class="stat-value" id="protein-val">0</span></div>
+            <div class="stat-row"><span>🪙 生態幣</span><span class="stat-value" id="credits-val">100</span></div>
+            <div class="btn-group">
+                <button onclick="buyResource('water')">買水 (+20) $10</button>
+                <button onclick="buyResource('solar')">升級日光 (+20) $15</button>
+                <button onclick="buyResource('protein')" style="grid-column: span 2;">買蛋白質 (+10) $20</button>
+            </div>
+        </div>
+
+        <!-- 生態群落 -->
+        <div class="card">
+            <h2>🐾 生態群落</h2>
+            <div class="stat-row"><span>🌿 植物數據 (Plant)</span><span class="stat-value" id="plant-val">20</span></div>
+            <div class="stat-row"><span>🐇 動物數據 (Animal)</span><span class="stat-value" id="animal-val">6</span></div>
+            <div class="stat-row"><span>🦠 微生物強度 (Microorganism)</span><span class="stat-value" id="micro-val">10.0 T</span></div>
+            <div class="btn-group">
+                <button onclick="buySpecies('plant')">+植物 $5</button>
+                <button onclick="buySpecies('animal')">+動物 $15</button>
+                <button onclick="buySpecies('microorganism')" style="grid-column: span 2;">+微生物 (+2.0T) $20</button>
+            </div>
+        </div>
+
+        <!-- 裝置購買商店 -->
+        <div class="card" style="grid-column: span 2;">
+            <h2>🛠️ 自動化設備商店 (裝置)</h2>
+            <div class="stat-row">
+                <span id="device-info">載入中...</span>
+                <span class="stat-value" id="device-status">未持有</span>
+            </div>
+            <div class="btn-group">
+                <button onclick="buyDevice()" id="buy-device-btn" style="grid-column: span 2;">購買裝置</button>
+            </div>
+        </div>
+
+        <!-- 日誌紀錄 -->
+        <div class="log-box" id="log-box">
+            <div class="log-entry">系統：綠洲初始化完成。正在讀取配置...</div>
+        </div>
+
+        <!-- 下一年按鈕 -->
+        <button class="primary" onclick="nextYear()">進入下一年 ⏩</button>
+    </div>
+</div>
+
+<script>
+    // 外部 JSON 設定檔路徑
+    const CONFIG_FILES = {
+        plant: 'plant.json',
+        animal: 'animal.json',
+        microorganism: 'microorganism.json',
+        device: 'device.json',
+        event: 'event.json'
+    };
+
+    // 遊戲核心數據狀態（時間單位：年）
+    let gameState = {
+        year: 1,
+        water: 50,
+        solar: 50,
+        protein: 0,
+        credits: 100,
+        plant: 20,
+        animal: 6,
+        microorganism: 10.0, // 單位: Trillion (T)
+        hasDevice: false
+    };
+
+    // 儲存外置 JSON 加載好的數據
+    let externalConfig = {
+        plant: null,
+        animal: null,
+        microorganism: null,
+        device: null,
+        event: null
+    };
+
+    // 加載外部 5 個 JSON 檔
+    async function loadAllConfigs() {
+        try {
+            const [plantData, animalData, microData, deviceData, eventData] = await Promise.all([
+                fetch(CONFIG_FILES.plant).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(CONFIG_FILES.animal).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(CONFIG_FILES.microorganism).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(CONFIG_FILES.device).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(CONFIG_FILES.event).then(r => r.ok ? r.json() : null).catch(() => null)
+            ]);
+
+            if (plantData) {
+                externalConfig.plant = plantData;
+                if (plantData.initialCount !== undefined) gameState.plant = plantData.initialCount;
+            }
+            if (animalData) {
+                externalConfig.animal = animalData;
+                if (animalData.initialCount !== undefined) gameState.animal = animalData.initialCount;
+            }
+            if (microData) {
+                externalConfig.microorganism = microData;
+                if (microData.initialTrillion !== undefined) gameState.microorganism = microData.initialTrillion;
+            }
+            if (deviceData) {
+                externalConfig.device = deviceData;
+            }
+            if (eventData) {
+                externalConfig.event = eventData;
+            }
+
+            addLog("系統：外置數據 (plant, animal, microorganism, device, event) 載入完成！");
+            updateUI();
+        } catch (err) {
+            addLog("⚠️ 部份外置數據載入失敗，採用預設值。");
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('year-count').innerText = gameState.year;
+        document.getElementById('water-val').innerText = gameState.water;
+        document.getElementById('solar-val').innerText = gameState.solar;
+        document.getElementById('protein-val').innerText = gameState.protein;
+        document.getElementById('credits-val').innerText = gameState.credits;
+        document.getElementById('plant-val').innerText = gameState.plant;
+        document.getElementById('animal-val').innerText = gameState.animal;
+        document.getElementById('micro-val').innerText = gameState.microorganism.toFixed(1) + " T";
+
+        // 更新裝置商店 UI
+        if (externalConfig.device) {
+            const d = externalConfig.device;
+            document.getElementById('device-info').innerText = `${d.name} (${d.description}) - $${d.cost}`;
+            const btn = document.getElementById('buy-device-btn');
+            if (gameState.hasDevice) {
+                document.getElementById('device-status').innerText = "已啟用";
+                document.getElementById('device-status').style.color = "var(--accent-green)";
+                btn.disabled = true;
+                btn.innerText = "裝置運作中";
+            } else {
+                document.getElementById('device-status').innerText = "未持有";
+                btn.disabled = false;
+                btn.innerText = `購買 ${d.name} ($${d.cost})`;
+            }
+        }
+    }
+
+    function addLog(text, isEvent = false, isWarn = false) {
+        const logBox = document.getElementById('log-box');
+        const entry = document.createElement('div');
+        let className = 'log-entry';
+        if (isEvent) className += ' log-event';
+        if (isWarn) className += ' log-warn';
+        entry.className = className;
+        entry.innerText = `[第 ${gameState.year} 年] ${text}`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function buyResource(type) {
+        if (type === 'water' && gameState.credits >= 10) {
+            gameState.credits -= 10;
+            gameState.water += 20;
+            addLog("購買了水資源 +20");
+        } else if (type === 'solar' && gameState.credits >= 15) {
+            gameState.credits -= 15;
+            gameState.solar += 20;
+            addLog("升級了陽光 +20");
+        } else if (type === 'protein' && gameState.credits >= 20) {
+            gameState.credits -= 20;
+            gameState.protein += 10;
+            gameState.microorganism += 1.0;
+            addLog("購買了蛋白質 +10 (微生物額外增加 1.0T)");
+        } else {
+            addLog("生態幣不足！");
+        }
+        updateUI();
+    }
+
+    function buySpecies(type) {
+        let cost = 5;
+        if (type === 'plant') cost = externalConfig.plant?.cost || 5;
+        if (type === 'animal') cost = externalConfig.animal?.cost || 15;
+        if (type === 'microorganism') cost = externalConfig.microorganism?.cost || 20;
+
+        if (gameState.credits >= cost) {
+            gameState.credits -= cost;
+            if (type === 'microorganism') {
+                gameState.microorganism += 2.0;
+                addLog(`引進了微生物 +2.0T (花費 $${cost})`);
+            } else {
+                gameState[type] += 1;
+                const nameMap = { plant: '植物', animal: '動物' };
+                addLog(`引進了 ${nameMap[type]} +1 (花費 $${cost})`);
+            }
+        } else {
+            addLog("生態幣不足！");
+        }
+        updateUI();
+    }
+
+    function buyDevice() {
+        const cost = externalConfig.device?.cost || 100;
+        if (!gameState.hasDevice && gameState.credits >= cost) {
+            gameState.credits -= cost;
+            gameState.hasDevice = true;
+            addLog(`成功購買裝置：${externalConfig.device?.name || '自動化裝置'}！`, true);
+        } else if (gameState.hasDevice) {
+            addLog("您已經擁有此裝置。");
+        } else {
+            addLog("生態幣不足！");
+        }
+        updateUI();
+    }
+
+    // 由 event.json 動態控制的事件觸發機制
+    function triggerRandomEvent() {
+        if (!externalConfig.event || !externalConfig.event.events) return;
+
+        const rand = Math.random(); // 0.0 到 1.0 的隨機數
+        let cumulativeProbability = 0;
+
+        for (const evt of externalConfig.event.events) {
+            cumulativeProbability += evt.chance;
+            if (rand < cumulativeProbability) {
+                // 觸發該事件並套用效果
+                applyEventEffects(evt.effects);
+                addLog(`⚠️ 年度突發事件：${evt.name}`, true);
+                break; // 每次推進僅觸發一個事件
+            }
+        }
+    }
+
+    // 根據 event.json 定義的加減數值套用至遊戲狀態
+    function applyEventEffects(effects) {
+        if (!effects) return;
+        if (effects.credits) gameState.credits = Math.max(0, gameState.credits + effects.credits);
+        if (effects.solar) gameState.solar = Math.max(0, gameState.solar + effects.solar);
+        if (effects.water) gameState.water = Math.max(0, gameState.water + effects.water);
+        if (effects.microorganism) gameState.microorganism = Math.max(0, gameState.microorganism + effects.microorganism);
+        if (effects.plant) gameState.plant = Math.max(0, gameState.plant + effects.plant);
+        if (effects.animal) gameState.animal = Math.max(0, gameState.animal + effects.animal);
+    }
+
+    function nextYear() {
+        gameState.year += 1;
+
+        // 0. 裝置年度自動集水
+        if (gameState.hasDevice && externalConfig.device) {
+            const autoWater = externalConfig.device.dailyWaterBonus || 5;
+            gameState.water += autoWater;
+            addLog(`⚙️ 裝置年度運作：自動收集水資源 +${autoWater}`);
+        }
+
+        // 1. 環境基礎年度蒸發耗散
+        let evap = gameState.solar > 50 ? 8 : 5;
+        gameState.water = Math.max(0, gameState.water - evap);
+
+        // 2. 植物光合作用與成長
+        let waterNeeded = Math.ceil(gameState.plant * 0.3);
+        let solarNeeded = Math.ceil(gameState.plant * 0.2);
+
+        if (gameState.water >= waterNeeded && gameState.solar >= solarNeeded) {
+            gameState.water -= waterNeeded;
+            gameState.solar -= solarNeeded;
+            let growthRate = gameState.plant > 40 ? 0.01 : 0.04;
+            gameState.plant += Math.floor(gameState.plant * growthRate) + (gameState.plant < 10 ? 1 : 0);
+        } else {
+            let withered = Math.ceil(gameState.plant * 0.2);
+            gameState.plant = Math.max(0, gameState.plant - withered);
+            addLog(`缺水或日光，${withered} 單位植物枯萎。`);
+        }
+
+        // 3. 微生物 (T) 代謝與蛋白質消耗
+        gameState.microorganism *= 0.95;
+        if (gameState.protein > 0) {
+            let absorbed = Math.min(gameState.protein, 5);
+            gameState.protein -= absorbed;
+            gameState.microorganism += absorbed * 0.5;
+        }
+
+        // 4. 20% 臨界值檢定
+        let totalMacroLife = gameState.plant + gameState.animal;
+        let requiredMicro = totalMacroLife * 0.2;
+
+        if (gameState.microorganism < requiredMicro) {
+            let pLoss = Math.ceil(gameState.plant * 0.15);
+            let aLoss = Math.ceil(gameState.animal * 0.15);
+            gameState.plant = Math.max(0, gameState.plant - pLoss);
+            gameState.animal = Math.max(0, gameState.animal - aLoss);
+            addLog(`⚠️ 微生物強度不足 (${gameState.microorganism.toFixed(1)}T < ${requiredMicro.toFixed(1)}T)，植物與動物衰退！`, false, true);
+        }
+
+        // 5. 動物進食與繁殖
+        let foodNeeded = gameState.animal * 1;
+        if (gameState.plant >= foodNeeded) {
+            gameState.plant -= foodNeeded;
+            if (gameState.animal > 0 && gameState.year % 3 === 0 && gameState.plant > gameState.animal * 3 && gameState.animal < 12) {
+                gameState.animal += 1;
+                addLog("食物充沛，動物誕生了新幼崽！");
+            }
+        } else {
+            let starved = Math.ceil((foodNeeded - gameState.plant) / 2);
+            gameState.microorganism += starved * 0.5;
+            gameState.plant = 0;
+            gameState.animal = Math.max(0, gameState.animal - starved);
+            addLog(`食物不足，${starved} 隻動物死亡（動物遺體轉化為微生物養分 +${(starved * 0.5).toFixed(1)}T）。`);
+        }
+
+        // 6. 年度生態獎勵
+        if (gameState.plant > 0 && gameState.animal > 0 && gameState.microorganism > 0) {
+            let reward = 10 + Math.floor((gameState.plant + gameState.animal) / 5);
+            gameState.credits += reward;
+            addLog(`生態維持平衡，獲得 $${reward} 生態獎勵。`);
+        }
+
+        // 7. 觸發外置 event.json 事件
+        triggerRandomEvent();
+
+        updateUI();
+    }
+
+    // 初始化頁面
+    loadAllConfigs();
+</script>
+
+</body>
+</html>
