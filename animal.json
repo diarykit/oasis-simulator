@@ -1,0 +1,7 @@
+{
+  "id": "animal_01",
+  "name": "溫和草食動物群",
+  "initialCount": 6,
+  "cost": 15,
+  "foodRequirement": 1.0
+}

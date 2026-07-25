@@ -1,0 +1,8 @@
+{
+  "id": "device_water_collector",
+  "name": "冷凝自動集水裝置",
+  "description": "每日自動為生態圈補充 +5 單位水資源",
+  "cost": 100,
+  "dailyWaterBonus": 5,
+  "isPurchased": false
+}

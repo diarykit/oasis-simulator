@@ -1,0 +1,8 @@
+{
+  "id": "plant_01",
+  "name": "綠洲原生植物群",
+  "initialCount": 20,
+  "cost": 5,
+  "waterConsumption": 0.3,
+  "solarConsumption": 0.2
+}

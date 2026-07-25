@@ -1,0 +1,9 @@
+{
+  "id": "micro_01",
+  "name": "土壤分解細菌與真菌群",
+  "unit": "Trillion",
+  "initialTrillion": 10.0,
+  "cost": 20,
+  "boostPerPurchase": 2.0,
+  "naturalDecayRate": 0.05
+}

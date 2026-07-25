@@ -12,6 +12,7 @@
             --accent-blue: #38bdf8;
             --accent-yellow: #facc15;
             --accent-red: #ef4444;
+            --accent-purple: #a855f7;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
         }
@@ -35,7 +36,7 @@
 
         .container {
             width: 100%;
-            max-width: 900px;
+            max-width: 950px;
             background-color: var(--panel-bg);
             border-radius: 12px;
             padding: 24px;
@@ -69,7 +70,7 @@
             gap: 20px;
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
             .grid-layout {
                 grid-template-columns: 1fr;
             }
@@ -139,7 +140,7 @@
             background-color: #020617;
             border-radius: 8px;
             padding: 12px;
-            height: 120px;
+            height: 130px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 0.85rem;
@@ -147,7 +148,7 @@
             border: 1px solid #334155;
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
             .log-box {
                 grid-column: span 1;
             }
@@ -160,6 +161,10 @@
         .log-event {
             color: var(--accent-yellow);
         }
+
+        .log-warn {
+            color: var(--accent-red);
+        }
     </style>
 </head>
 <body>
@@ -171,34 +176,48 @@
     </header>
 
     <div class="grid-layout">
-        <!-- 資源狀態 -->
+        <!-- 環境與資源 -->
         <div class="card">
-            <h2>🌍 環境與資源</h2>
+            <h2>🌍 環境與物資</h2>
             <div class="stat-row"><span>💧 水資源</span><span class="stat-value" id="water-val">50</span></div>
             <div class="stat-row"><span>☀️ 太陽能</span><span class="stat-value" id="solar-val">50</span></div>
+            <div class="stat-row"><span>🥩 蛋白質</span><span class="stat-value" id="protein-val">0</span></div>
             <div class="stat-row"><span>🪙 生態幣</span><span class="stat-value" id="credits-val">100</span></div>
             <div class="btn-group">
                 <button onclick="buyResource('water')">買水 (+20) $10</button>
-                <button onclick="buyResource('solar')">升級光照 (+20) $15</button>
+                <button onclick="buyResource('solar')">升級日光 (+20) $15</button>
+                <button onclick="buyResource('protein')" style="grid-column: span 2;">買蛋白質 (+10) $20</button>
             </div>
         </div>
 
-        <!-- 生態物種 -->
+        <!-- 生態群落 -->
         <div class="card">
             <h2>🐾 生態群落</h2>
-            <div class="stat-row"><span>🌿 植物</span><span class="stat-value" id="plants-val">20</span></div>
-            <div class="stat-row"><span>🐇 草食動物</span><span class="stat-value" id="herbivores-val">5</span></div>
-            <div class="stat-row"><span>🦊 肉食動物</span><span class="stat-value" id="carnivores-val">1</span></div>
+            <div class="stat-row"><span>🌿 植物數據 (Plant)</span><span class="stat-value" id="plant-val">20</span></div>
+            <div class="stat-row"><span>🐇 動物數據 (Animal)</span><span class="stat-value" id="animal-val">6</span></div>
+            <div class="stat-row"><span>🦠 微生物強度 (Microorganism)</span><span class="stat-value" id="micro-val">10.0 T</span></div>
             <div class="btn-group">
-                <button onclick="buySpecies('plants')">+植物 $5</button>
-                <button onclick="buySpecies('herbivores')">+草食動物 $15</button>
-                <button onclick="buySpecies('carnivores')" style="grid-column: span 2;">+肉食動物 $40</button>
+                <button onclick="buySpecies('plant')">+植物 $5</button>
+                <button onclick="buySpecies('animal')">+動物 $15</button>
+                <button onclick="buySpecies('microorganism')" style="grid-column: span 2;">+微生物 (+2.0T) $20</button>
+            </div>
+        </div>
+
+        <!-- 裝置購買商店 -->
+        <div class="card" style="grid-column: span 2;">
+            <h2>🛠️ 自動化設備商店 (裝置)</h2>
+            <div class="stat-row">
+                <span id="device-info">載入中...</span>
+                <span class="stat-value" id="device-status">未持有</span>
+            </div>
+            <div class="btn-group">
+                <button onclick="buyDevice()" id="buy-device-btn" style="grid-column: span 2;">購買裝置</button>
             </div>
         </div>
 
         <!-- 日誌紀錄 -->
         <div class="log-box" id="log-box">
-            <div class="log-entry">系統：綠洲初始化完成。請保持生態平衡！</div>
+            <div class="log-entry">系統：綠洲初始化完成。正在讀取配置...</div>
         </div>
 
         <!-- 下一天按鈕 -->
@@ -207,32 +226,104 @@
 </div>
 
 <script>
-    // 遊戲狀態數據
+    // 外部 JSON 設定檔路徑
+    const CONFIG_FILES = {
+        plant: 'plant.json',
+        animal: 'animal.json',
+        microorganism: 'microorganism.json',
+        device: 'device.json'
+    };
+
+    // 遊戲核心數據狀態
     let gameState = {
         day: 1,
         water: 50,
         solar: 50,
+        protein: 0,
         credits: 100,
-        plants: 20,
-        herbivores: 5,
-        carnivores: 1
+        plant: 20,
+        animal: 6,
+        microorganism: 10.0, // 單位: Trillion (T)
+        hasDevice: false
     };
+
+    // 儲存外置 JSON 加載好的數據
+    let externalConfig = {
+        plant: null,
+        animal: null,
+        microorganism: null,
+        device: null
+    };
+
+    // 加載外部 4 個 JSON 檔
+    async function loadAllConfigs() {
+        try {
+            const [plantData, animalData, microData, deviceData] = await Promise.all([
+                fetch(CONFIG_FILES.plant).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(CONFIG_FILES.animal).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(CONFIG_FILES.microorganism).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(CONFIG_FILES.device).then(r => r.ok ? r.json() : null).catch(() => null)
+            ]);
+
+            if (plantData) {
+                externalConfig.plant = plantData;
+                if (plantData.initialCount !== undefined) gameState.plant = plantData.initialCount;
+            }
+            if (animalData) {
+                externalConfig.animal = animalData;
+                if (animalData.initialCount !== undefined) gameState.animal = animalData.initialCount;
+            }
+            if (microData) {
+                externalConfig.microorganism = microData;
+                if (microData.initialTrillion !== undefined) gameState.microorganism = microData.initialTrillion;
+            }
+            if (deviceData) {
+                externalConfig.device = deviceData;
+            }
+
+            addLog("系統：外置數據 (plant, animal, microorganism, device) 載入完成！");
+            updateUI();
+        } catch (err) {
+            addLog("⚠️ 部份外置數據載入失敗，採用預設值。");
+        }
+    }
 
     function updateUI() {
         document.getElementById('day-count').innerText = gameState.day;
         document.getElementById('water-val').innerText = gameState.water;
         document.getElementById('solar-val').innerText = gameState.solar;
+        document.getElementById('protein-val').innerText = gameState.protein;
         document.getElementById('credits-val').innerText = gameState.credits;
-        document.getElementById('plants-val').innerText = gameState.plants;
-        document.getElementById('herbivores-val').innerText = gameState.herbivores;
-        document.getElementById('carnivores-val').innerText = gameState.carnivores;
+        document.getElementById('plant-val').innerText = gameState.plant;
+        document.getElementById('animal-val').innerText = gameState.animal;
+        document.getElementById('micro-val').innerText = gameState.microorganism.toFixed(1) + " T";
+
+        // 更新裝置商店 UI
+        if (externalConfig.device) {
+            const d = externalConfig.device;
+            document.getElementById('device-info').innerText = `${d.name} (${d.description}) - $${d.cost}`;
+            const btn = document.getElementById('buy-device-btn');
+            if (gameState.hasDevice) {
+                document.getElementById('device-status').innerText = "已啟用";
+                document.getElementById('device-status').style.color = "var(--accent-green)";
+                btn.disabled = true;
+                btn.innerText = "裝置運作中";
+            } else {
+                document.getElementById('device-status').innerText = "未持有";
+                btn.disabled = false;
+                btn.innerText = `購買 ${d.name} ($${d.cost})`;
+            }
+        }
     }
 
-    function addLog(text, isEvent = false) {
+    function addLog(text, isEvent = false, isWarn = false) {
         const logBox = document.getElementById('log-box');
         const entry = document.createElement('div');
-        entry.className = 'log-entry' + (isEvent ? ' log-event' : '');
-        entry.innerText = `[第 ${gameState.day} 天]${text}`;
+        let className = 'log-entry';
+        if (isEvent) className += ' log-event';
+        if (isWarn) className += ' log-warn';
+        entry.className = className;
+        entry.innerText = `[第 ${gameState.day} 天] ${text}`;
         logBox.appendChild(entry);
         logBox.scrollTop = logBox.scrollHeight;
     }
@@ -245,7 +336,13 @@
         } else if (type === 'solar' && gameState.credits >= 15) {
             gameState.credits -= 15;
             gameState.solar += 20;
-            addLog("升級了太陽能設施 +20");
+            addLog("升級了陽光 +20");
+        } else if (type === 'protein' && gameState.credits >= 20) {
+            gameState.credits -= 20;
+            gameState.protein += 10;
+            // 蛋白質同時微幅刺激微生物
+            gameState.microorganism += 1.0;
+            addLog("購買了蛋白質 +10 (微生物額外增加 1.0T)");
         } else {
             addLog("生態幣不足！");
         }
@@ -253,18 +350,35 @@
     }
 
     function buySpecies(type) {
-        if (type === 'plants' && gameState.credits >= 5) {
-            gameState.credits -= 5;
-            gameState.plants += 5;
-            addLog("引進了植物 +5");
-        } else if (type === 'herbivores' && gameState.credits >= 15) {
-            gameState.credits -= 15;
-            gameState.herbivores += 1;
-            addLog("引進了草食動物 +1");
-        } else if (type === 'carnivores' && gameState.credits >= 40) {
-            gameState.credits -= 40;
-            gameState.carnivores += 1;
-            addLog("引進了肉食動物 +1");
+        let cost = 5;
+        if (type === 'plant') cost = externalConfig.plant?.cost || 5;
+        if (type === 'animal') cost = externalConfig.animal?.cost || 15;
+        if (type === 'microorganism') cost = externalConfig.microorganism?.cost || 20;
+
+        if (gameState.credits >= cost) {
+            gameState.credits -= cost;
+            if (type === 'microorganism') {
+                gameState.microorganism += 2.0;
+                addLog(`引進了微生物 +2.0T (花費 $${cost})`);
+            } else {
+                gameState[type] += 1;
+                const nameMap = { plant: '植物', animal: '動物' };
+                addLog(`引進了 ${nameMap[type]} +1 (花費 $${cost})`);
+            }
+        } else {
+            addLog("生態幣不足！");
+        }
+        updateUI();
+    }
+
+    function buyDevice() {
+        const cost = externalConfig.device?.cost || 100;
+        if (!gameState.hasDevice && gameState.credits >= cost) {
+            gameState.credits -= cost;
+            gameState.hasDevice = true;
+            addLog(`成功購買裝置：${externalConfig.device?.name || '自動化裝置'}！`, true);
+        } else if (gameState.hasDevice) {
+            addLog("您已經擁有此裝置。");
         } else {
             addLog("生態幣不足！");
         }
@@ -274,12 +388,12 @@
     function triggerRandomEvent() {
         const events = [
             { name: "旱災襲來！", effect: () => { gameState.water = Math.max(0, gameState.water - 30); } },
-            { name: "陽光普照！", effect: () => { gameState.solar += 25; } },
-            { name: "植物病蟲害！", effect: () => { gameState.plants = Math.floor(gameState.plants * 0.6); } },
+            { name: "強烈暴曬！", effect: () => { gameState.solar += 25; gameState.water = Math.max(0, gameState.water - 10); } },
+            { name: "植物病蟲害！", effect: () => { gameState.plant = Math.floor(gameState.plant * 0.6); } },
             { name: "生態補助款發放！", effect: () => { gameState.credits += 30; } }
         ];
 
-        if (Math.random() < 0.3) { // 30% 機率觸發事件
+        if (Math.random() < 0.3) {
             const evt = events[Math.floor(Math.random() * events.length)];
             evt.effect();
             addLog(`⚠️ 突發事件：${evt.name}`, true);
@@ -289,66 +403,79 @@
     function nextDay() {
         gameState.day += 1;
 
-        // 1. 資源消耗與植物成長
-        let waterConsumed = Math.min(gameState.water, Math.ceil(gameState.plants * 0.5));
-        let solarConsumed = Math.min(gameState.solar, Math.ceil(gameState.plants * 0.3));
-        
-        gameState.water -= waterConsumed;
-        gameState.solar -= solarConsumed;
-
-        // 植物成長受限於獲得的資源
-        let plantGrowth = Math.min(waterConsumed * 2, solarConsumed * 3);
-        gameState.plants += plantGrowth;
-
-        // 2. 草食動物進食與繁殖/死亡
-        let plantFoodNeeded = gameState.herbivores * 2;
-        if (gameState.plants >= plantFoodNeeded) {
-            gameState.plants -= plantFoodNeeded;
-            // 食物充足，少量繁殖
-            if (gameState.herbivores > 0 && gameState.day % 2 === 0) {
-                gameState.herbivores += Math.floor(gameState.herbivores * 0.2);
-            }
-        } else {
-            // 食物不足，部分餓死
-            let starved = Math.ceil((plantFoodNeeded - gameState.plants) / 2);
-            gameState.plants = 0;
-            gameState.herbivores = Math.max(0, gameState.herbivores - starved);
-            addLog(`食物不足，${starved} 只草食動物餓死。`);
+        // 0. 裝置自動發揮效果
+        if (gameState.hasDevice && externalConfig.device) {
+            const autoWater = externalConfig.device.dailyWaterBonus || 5;
+            gameState.water += autoWater;
+            addLog(`⚙️ 裝置運作：自動收集水資源 +${autoWater}`);
         }
 
-        // 3. 肉食動物進食與繁殖/死亡
-        let meatFoodNeeded = gameState.carnivores * 2;
-        if (gameState.herbivores >= meatFoodNeeded) {
-            gameState.herbivores -= meatFoodNeeded;
-            if (gameState.carnivores > 0 && gameState.day % 3 === 0) {
-                gameState.carnivores += 1;
-            }
+        // 1. 環境基礎消耗（熵增耗散，放著不管水會蒸發）
+        let evap = gameState.solar > 50 ? 8 : 5;
+        gameState.water = Math.max(0, gameState.water - evap);
+
+        // 2. 植物光合作用與成長/衰退
+        let waterNeeded = Math.ceil(gameState.plant * 0.3);
+        let solarNeeded = Math.ceil(gameState.plant * 0.2);
+
+        if (gameState.water >= waterNeeded && gameState.solar >= solarNeeded) {
+            gameState.water -= waterNeeded;
+            gameState.solar -= solarNeeded;
+            gameState.plant += Math.floor(gameState.plant * 0.05) + 1; 
         } else {
-            let starved = Math.ceil((meatFoodNeeded - gameState.herbivores) / 2);
-            gameState.herbivores = 0;
-            gameState.carnivores = Math.max(0, gameState.carnivores - starved);
-            addLog(`獵物不足，${starved} 只肉食動物餓死。`);
+            let withered = Math.ceil(gameState.plant * 0.2);
+            gameState.plant = Math.max(0, gameState.plant - withered);
+            addLog(`缺水或日光，${withered} 單位植物枯萎。`);
         }
 
-        // 4. 自然基礎資源恢復與生態獎勵
-        gameState.water += 10;
-        gameState.solar += 10;
+        // 3. 微生物 (T) 代謝與蛋白質消耗
+        gameState.microorganism *= 0.95; // 每日自然衰亡 5%
+        if (gameState.protein > 0) {
+            let absorbed = Math.min(gameState.protein, 5);
+            gameState.protein -= absorbed;
+            gameState.microorganism += absorbed * 0.5; // 吸收蛋白質促進分裂
+        }
 
-        // 生態平衡獎勵（三種物種均存在）
-        if (gameState.plants > 0 && gameState.herbivores > 0 && gameState.carnivores > 0) {
-            let reward = 10 + Math.floor((gameState.plants + gameState.herbivores + gameState.carnivores) / 5);
+        // 4. 三者動態制衡 (20% 臨界值檢定)
+        let totalMacroLife = gameState.plant + gameState.animal;
+        let requiredMicro = totalMacroLife * 0.2;
+
+        if (gameState.microorganism < requiredMicro) {
+            let pLoss = Math.ceil(gameState.plant * 0.15);
+            let aLoss = Math.ceil(gameState.animal * 0.15);
+            gameState.plant = Math.max(0, gameState.plant - pLoss);
+            gameState.animal = Math.max(0, gameState.animal - aLoss);
+            addLog(`⚠️ 微生物強度不足 (${gameState.microorganism.toFixed(1)}T < ${requiredMicro.toFixed(1)}T)，植物與動物衰退！`, false, true);
+        }
+
+        // 5. 動物進食與生存
+        let foodNeeded = gameState.animal * 1;
+        if (gameState.plant >= foodNeeded) {
+            gameState.plant -= foodNeeded;
+            // 生育
+            if (gameState.animal > 0 && gameState.day % 3 === 0) {
+                gameState.animal += 1;
+            }
+        } else {
+            let starved = Math.ceil((foodNeeded - gameState.plant) / 2);
+            gameState.plant = 0;
+            gameState.animal = Math.max(0, gameState.animal - starved);
+            addLog(`食物不足，${starved} 隻動物死亡。`);
+        }
+
+        // 6. 自然獎勵
+        if (gameState.plant > 0 && gameState.animal > 0 && gameState.microorganism > 0) {
+            let reward = 10 + Math.floor((gameState.plant + gameState.animal) / 5);
             gameState.credits += reward;
             addLog(`生態維持平衡，獲得 $${reward} 生態獎勵。`);
         }
 
-        // 5. 隨機事件
         triggerRandomEvent();
-
         updateUI();
     }
 
-    // 初始化介面
-    updateUI();
+    // 初始化頁面
+    loadAllConfigs();
 </script>
 
 </body>
