@@ -420,82 +420,90 @@
     }
 
     function nextYear() {
-        gameState.year += 1;
+    gameState.year += 1;
 
-        // 0. 裝置年度自動集水
-        if (gameState.hasDevice && externalConfig.device) {
-            const autoWater = externalConfig.device.dailyWaterBonus || 5;
-            gameState.water += autoWater;
-            addLog(`⚙️ 裝置年度運作：自動收集水資源 +${autoWater}`);
-        }
+    // 0. 自然環境補充（每年基礎降雨 +20、太陽能恢復至 50）
+    gameState.water += 20;
+    gameState.solar = Math.max(gameState.solar, 50);
 
-        // 1. 環境基礎年度蒸發耗散
-        let evap = gameState.solar > 50 ? 8 : 5;
-        gameState.water = Math.max(0, gameState.water - evap);
-
-        // 2. 植物光合作用與成長
-        let waterNeeded = Math.ceil(gameState.plant * 0.3);
-        let solarNeeded = Math.ceil(gameState.plant * 0.2);
-
-        if (gameState.water >= waterNeeded && gameState.solar >= solarNeeded) {
-            gameState.water -= waterNeeded;
-            gameState.solar -= solarNeeded;
-            let growthRate = gameState.plant > 40 ? 0.01 : 0.04;
-            gameState.plant += Math.floor(gameState.plant * growthRate) + (gameState.plant < 10 ? 1 : 0);
-        } else {
-            let withered = Math.ceil(gameState.plant * 0.2);
-            gameState.plant = Math.max(0, gameState.plant - withered);
-            addLog(`缺水或日光，${withered} 單位植物枯萎。`);
-        }
-
-        // 3. 微生物 (T) 代謝與蛋白質消耗
-        gameState.microorganism *= 0.95;
-        if (gameState.protein > 0) {
-            let absorbed = Math.min(gameState.protein, 5);
-            gameState.protein -= absorbed;
-            gameState.microorganism += absorbed * 0.5;
-        }
-
-        // 4. 20% 臨界值檢定
-        let totalMacroLife = gameState.plant + gameState.animal;
-        let requiredMicro = totalMacroLife * 0.2;
-
-        if (gameState.microorganism < requiredMicro) {
-            let pLoss = Math.ceil(gameState.plant * 0.15);
-            let aLoss = Math.ceil(gameState.animal * 0.15);
-            gameState.plant = Math.max(0, gameState.plant - pLoss);
-            gameState.animal = Math.max(0, gameState.animal - aLoss);
-            addLog(`⚠️ 微生物強度不足 (${gameState.microorganism.toFixed(1)}T < ${requiredMicro.toFixed(1)}T)，植物與動物衰退！`, false, true);
-        }
-
-        // 5. 動物進食與繁殖
-        let foodNeeded = gameState.animal * 1;
-        if (gameState.plant >= foodNeeded) {
-            gameState.plant -= foodNeeded;
-            if (gameState.animal > 0 && gameState.year % 3 === 0 && gameState.plant > gameState.animal * 3 && gameState.animal < 12) {
-                gameState.animal += 1;
-                addLog("食物充沛，動物誕生了新幼崽！");
-            }
-        } else {
-            let starved = Math.ceil((foodNeeded - gameState.plant) / 2);
-            gameState.microorganism += starved * 0.5;
-            gameState.plant = 0;
-            gameState.animal = Math.max(0, gameState.animal - starved);
-            addLog(`食物不足，${starved} 隻動物死亡（動物遺體轉化為微生物養分 +${(starved * 0.5).toFixed(1)}T）。`);
-        }
-
-        // 6. 年度生態獎勵
-        if (gameState.plant > 0 && gameState.animal > 0 && gameState.microorganism > 0) {
-            let reward = 10 + Math.floor((gameState.plant + gameState.animal) / 5);
-            gameState.credits += reward;
-            addLog(`生態維持平衡，獲得 $${reward} 生態獎勵。`);
-        }
-
-        // 7. 觸發外置 event.json 事件
-        triggerRandomEvent();
-
-        updateUI();
+    // 自動化裝置效益
+    if (gameState.hasDevice && externalConfig.device) {
+        const autoWater = externalConfig.device.dailyWaterBonus || 5;
+        gameState.water += autoWater;
+        addLog(`⚙️ 裝置年度運作：自動收集水資源 +${autoWater}`);
     }
+
+    // 1. 環境蒸發
+    let evap = gameState.solar > 50 ? 8 : 5;
+    gameState.water = Math.max(0, gameState.water - evap);
+
+    // 2. 植物光合作用（水光充足時，植物大幅成長）
+    let waterNeeded = Math.ceil(gameState.plant * 0.3);
+    let solarNeeded = Math.ceil(gameState.plant * 0.2);
+
+    if (gameState.water >= waterNeeded && gameState.solar >= solarNeeded) {
+        gameState.water -= waterNeeded;
+        gameState.solar -= solarNeeded;
+        
+        // 修正：水光充足時，植物增加 20% + 2 基礎值（確保成長能覆蓋動物進食）
+        let growth = Math.floor(gameState.plant * 0.2) + 2;
+        gameState.plant += growth;
+        addLog(`☀️ 陽光與水資源充足，植物生長 +${growth}`);
+    } else {
+        // 資源不足才枯萎
+        let withered = Math.ceil(gameState.plant * 0.2);
+        gameState.plant = Math.max(0, gameState.plant - withered);
+        addLog(`🍂 缺水或日光，${withered} 單位植物枯萎。`, false, true);
+    }
+
+    // 3. 微生物 (T) 代謝與蛋白質消耗
+    gameState.microorganism *= 0.95;
+    if (gameState.protein > 0) {
+        let absorbed = Math.min(gameState.protein, 5);
+        gameState.protein -= absorbed;
+        gameState.microorganism += absorbed * 0.5;
+    }
+
+    // 4. 微生物臨界值檢定 (20%)
+    let totalMacroLife = gameState.plant + gameState.animal;
+    let requiredMicro = totalMacroLife * 0.2;
+
+    if (gameState.microorganism < requiredMicro) {
+        let pLoss = Math.ceil(gameState.plant * 0.15);
+        let aLoss = Math.ceil(gameState.animal * 0.15);
+        gameState.plant = Math.max(0, gameState.plant - pLoss);
+        gameState.animal = Math.max(0, gameState.animal - aLoss);
+        addLog(`⚠️ 微生物強度不足 (${gameState.microorganism.toFixed(1)}T < ${requiredMicro.toFixed(1)}T)，植物與動物衰退！`, false, true);
+    }
+
+    // 5. 動物進食與繁殖
+    let foodNeeded = gameState.animal * 1;
+    if (gameState.plant >= foodNeeded) {
+        gameState.plant -= foodNeeded;
+        if (gameState.animal > 0 && gameState.year % 3 === 0 && gameState.plant > gameState.animal * 2) {
+            gameState.animal += 1;
+            addLog("🐇 食物充沛，動物誕生了新幼崽！");
+        }
+    } else {
+        let starved = Math.ceil((foodNeeded - gameState.plant) / 2);
+        gameState.microorganism += starved * 0.5;
+        gameState.plant = 0;
+        gameState.animal = Math.max(0, gameState.animal - starved);
+        addLog(`💀 食物不足，${starved} 隻動物死亡（轉化為微生物養分 +${(starved * 0.5).toFixed(1)}T）。`);
+    }
+
+    // 6. 年度獎勵
+    if (gameState.plant > 0 && gameState.animal > 0 && gameState.microorganism > 0) {
+        let reward = 10 + Math.floor((gameState.plant + gameState.animal) / 5);
+        gameState.credits += reward;
+        addLog(`生態維持平衡，獲得 $${reward} 生態獎勵。`);
+    }
+
+    // 7. 觸發外置 event.json 事件
+    triggerRandomEvent();
+
+    updateUI();
+}
 
     // 初始化頁面
     loadAllConfigs();
