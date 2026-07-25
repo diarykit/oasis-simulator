@@ -1,5 +1,5 @@
 {
-  "description": "綠洲生態圈隨機事件總表 (概率累加判定)",
+  "description": "綠洲生態圈隨機事件總表 (全權由此檔案控制)",
   "events": [
     {
       "id": "gold_mine",
@@ -47,6 +47,22 @@
       "chance": 0.05,
       "effects": {
         "animal": 2
+      }
+    },
+    {
+      "id": "drought",
+      "name": "年度大旱災！水資源大量蒸發！",
+      "chance": 0.05,
+      "effects": {
+        "water": -30
+      }
+    },
+    {
+      "id": "pest_infestation",
+      "name": "植物病蟲害爆發！",
+      "chance": 0.05,
+      "effects": {
+        "plant": -5
       }
     }
   ]
